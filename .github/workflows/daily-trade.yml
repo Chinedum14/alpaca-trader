@@ -2,11 +2,13 @@ name: Daily Alpaca Trade
 
 on:
   schedule:
-    # GitHub cron is in UTC and does NOT follow US daylight saving.
-    # 14:30 UTC ≈ 9:30 ET (winter / EST) and ≈ 10:30 ET (summer / EDT).
-    # Scheduled runs can be delayed several minutes under load. Adjust as needed.
-    - cron: "30 14 * * 1-5"   # Mon–Fri
-  workflow_dispatch: {}        # also allow manual runs from the Actions tab
+    # Target: 3:55 PM ET, every weekday (5 min before the 4:00 PM close).
+    # GitHub cron is UTC and does NOT follow US daylight saving, so we schedule
+    # BOTH possible UTC times and let run_daily's ENFORCE_WINDOW guard trade only
+    # at the one that is actually 15:55 ET. The wrong-season cron self-skips.
+    - cron: "55 19 * * 1-5"   # 19:55 UTC = 15:55 EDT (summer)
+    - cron: "55 20 * * 1-5"   # 20:55 UTC = 15:55 EST (winter)
+  workflow_dispatch: {}        # manual runs from the Actions tab (window not enforced)
 
 permissions:
   contents: read
@@ -25,6 +27,10 @@ jobs:
       ALPACA_LIVE: "0"                         # paper account
       DRY_RUN: ${{ vars.DRY_RUN || '0' }}      # set repo Variable DRY_RUN=1 to test safely
       SKIP_IF_CLOSED: "1"
+      # Enforce the 3:55 PM ET window on scheduled runs only; manual runs bypass it.
+      ENFORCE_WINDOW: ${{ github.event_name == 'schedule' && '1' || '0' }}
+      TRADE_WINDOW_ET: "15:55"
+      TRADE_WINDOW_TOL_MIN: "20"
     steps:
       - uses: actions/checkout@v4
 
