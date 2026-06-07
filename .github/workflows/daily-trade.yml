@@ -1,0 +1,40 @@
+name: Daily Alpaca Trade
+
+on:
+  schedule:
+    # GitHub cron is in UTC and does NOT follow US daylight saving.
+    # 14:30 UTC ≈ 9:30 ET (winter / EST) and ≈ 10:30 ET (summer / EDT).
+    # Scheduled runs can be delayed several minutes under load. Adjust as needed.
+    - cron: "30 14 * * 1-5"   # Mon–Fri
+  workflow_dispatch: {}        # also allow manual runs from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-trade
+  cancel-in-progress: false
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+      APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+      ALPACA_LIVE: "0"                         # paper account
+      DRY_RUN: ${{ vars.DRY_RUN || '0' }}      # set repo Variable DRY_RUN=1 to test safely
+      SKIP_IF_CLOSED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily strategy
+        run: python run_daily.py
