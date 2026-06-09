@@ -94,13 +94,18 @@ For price/bar data to drive signals, use alpaca-py's data clients
 4. Run it once manually: **Actions → Daily Alpaca Trade → Run workflow**.
 
 ### Schedule notes / gotchas
-- Cron is **UTC** and ignores US daylight saving. To hit **3:55 PM ET** year-round
-  the workflow schedules **two** crons (`55 19` and `55 20` UTC) and lets
-  `run_daily.py` trade only when it's actually 15:55 ET (`ENFORCE_WINDOW`); the
-  wrong-season cron self-skips. Manual runs bypass the window.
-- GitHub may **delay** scheduled runs by several minutes under load (the 20-minute
-  window tolerance absorbs this; a badly delayed run is caught by the closed-market
-  guard).
+- Cron is **UTC** and ignores US daylight saving. To hit **~3:55 PM ET** year-round
+  the workflow fires **three staggered attempts** (3:40 / 3:48 / 3:55 ET), each
+  listed in both UTC offsets — six cron lines total. `run_daily.py`'s
+  `ENFORCE_WINDOW` guard (±20 min of 15:55 ET) lets only the correct-season
+  attempts act; the rest self-skip. Manual runs bypass the window.
+- GitHub's scheduler is **unreliable** — runs are often delayed and can be dropped
+  under load. The staggered attempts are the mitigation: whichever lands first
+  while the market is open does the trade, and later attempts see <5% drift and
+  no-op, so they can't double-trade.
+- GitHub shows run times in **your local timezone**, but cron fires on UTC. The
+  trading run is `19:55 UTC` (summer) — e.g. 20:55 for a GMT+1 viewer, *not* the
+  morning.
 - Scheduled workflows are **auto-disabled after 60 days of no repo activity** —
   push a commit occasionally or re-enable in the Actions tab.
 - Actions minutes are billable on private repos beyond the free monthly quota.

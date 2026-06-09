@@ -2,11 +2,22 @@ name: Daily Alpaca Trade
 
 on:
   schedule:
-    # Target: 3:55 PM ET, every weekday (5 min before the 4:00 PM close).
-    # GitHub cron is UTC and does NOT follow US daylight saving, so we schedule
-    # BOTH possible UTC times and let run_daily's ENFORCE_WINDOW guard trade only
-    # at the one that is actually 15:55 ET. The wrong-season cron self-skips.
+    # Target: ~3:55 PM ET weekdays (just before the 4:00 PM close).
+    #
+    # GitHub's scheduler is unreliable — runs are frequently delayed and can be
+    # dropped under load — so a single slot 5 min before the bell often misses.
+    # We fire THREE staggered attempts (3:40 / 3:48 / 3:55 ET); whichever lands
+    # first while the market is open does the trade, and later attempts see <5%
+    # drift and no-op (idempotent). run_daily's ENFORCE_WINDOW guard (±20 min of
+    # 15:55 ET) lets only the correct-season attempts act; the rest self-skip.
+    #
+    # Cron is UTC and ignores US daylight saving, so each ET time is listed in
+    # BOTH offsets: EDT (summer, UTC−4) and EST (winter, UTC−5).
+    - cron: "40 19 * * 1-5"   # 19:40 UTC = 15:40 EDT (summer)
+    - cron: "48 19 * * 1-5"   # 19:48 UTC = 15:48 EDT (summer)
     - cron: "55 19 * * 1-5"   # 19:55 UTC = 15:55 EDT (summer)
+    - cron: "40 20 * * 1-5"   # 20:40 UTC = 15:40 EST (winter)
+    - cron: "48 20 * * 1-5"   # 20:48 UTC = 15:48 EST (winter)
     - cron: "55 20 * * 1-5"   # 20:55 UTC = 15:55 EST (winter)
   workflow_dispatch: {}        # manual runs from the Actions tab (window not enforced)
 
