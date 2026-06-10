@@ -1,5 +1,4 @@
 # Secrets / local env
-.env
 *.env
 
 # Python
@@ -16,4 +15,5 @@ env/
 # OS / editor
 .DS_Store
 .idea/
-.vscode/
+config.bat
+node_modules
